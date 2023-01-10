@@ -1,0 +1,15 @@
+{'General': {
+    'NITER': 5,
+    'LR': 1e-4,
+    'BATCH_SIZE': 16384,
+    'EPOCHS': 100,
+    'NWARMUP': 3,
+    'NPATIENCE': 10,
+},
+'PCT': {
+    'NHEAD': 5,
+    'NPOINT': 30,
+},    
+'MLP':{
+    'NTRIAL':10,
+    }}
