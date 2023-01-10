@@ -110,7 +110,7 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
     xmin,xmax = xaxis[0], xaxis[-1]
     plt.hlines(ref,xmin=xmin,xmax=xmax,linestyles='dashed',color='black')#opt.sys_translate[sys])
     #max_ylim, min_ylim = 1,0
-    max_ylim, min_ylim = np.max(max_y), np.min(min_y)
+    # max_ylim, min_ylim = np.max(max_y), np.min(min_y)
 
     if len(add_text)>0:
         #ax = plt.gca()
@@ -249,8 +249,7 @@ for var in gen_var_names:
     else:
         data_pred,_=np.histogram(data_var,weights=weight_data*mc_info[data_name].nominal_wgts,bins=binning,density=True)
 
-    if 'tf_c' in var or 'tf_f' in var:
-
+    if 'tf_c' in var:# or 'tf_f' in var:
         toSave = np.zeros( (len(binning)-1, 2))
         toSave[:, 0] = xaxis
         toSave[:, 1] = data_pred
@@ -291,6 +290,16 @@ for var in gen_var_names:
 
             ratio_sys['stat'] = 100*np.std(stat_unc,axis=0)/np.mean(stat_unc,axis=0)
             print(ratio_sys['stat'])
+
+            if '_c' in var:
+                toSave_stat = np.zeros( (len(binning)-1, 2))
+                toSave_stat[:, 0] = xaxis
+                toSave_stat[:, 1] = ratio_sys['stat']
+                df = h5.File("stat_"+var+"_"+str(flags.q2_int)+'.h5', 'w')
+                df['xaxis']=toSave_stat[:,0]
+                df[var]=toSave_stat[:, 1]
+                df.close()  
+                # input()
 
             #Ensemble variance
             ensem_unc = []
@@ -438,7 +447,7 @@ for var in gen_var_names:
         pred,_=np.histogram(mc_var,weights=mc_info[mc_name].nominal_wgts,bins=binning,density=True)
         # print( "Pythia predictions: ", pred)
 
-        if 'tf_c' in var or 'tf_f' in var:
+        if 'tf_c' in var:# or 'tf_f' in var:
             toSave = np.zeros( (len(binning)-1, 2))
             toSave[:, 0] = xaxis
             toSave[:, 1] = pred
