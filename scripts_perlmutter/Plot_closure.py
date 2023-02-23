@@ -19,7 +19,7 @@ opt.SetStyle()
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--data_folder', default='/pscratch/sd/j/jing/h5', help='Folder containing data and MC files')
-parser.add_argument('--weights', default='/pscratch/sd/j/jing/H1PCT/weights_saved', help='Folder to store trained weights')
+parser.add_argument('--weights', default='/pscratch/sd/j/jing/H1PCT/weights', help='Folder to store trained weights')
 parser.add_argument('--mode', default='standard', help='Which train type to load [hybrid/standard/PCT]')
 parser.add_argument('--config', default='config_6d_general.json', help='Basic config file containing general options')
 
@@ -28,7 +28,7 @@ parser.add_argument('--saveArrays', action='store_true', default=False,help='out
 parser.add_argument('--sys', action='store_true', default=False,help='Evaluate results with systematic uncertainties')
 parser.add_argument('--comp', action='store_true', default=False,help='Compare closure unc. from different methods')
 parser.add_argument('--plot_reco', action='store_true', default=False,help='Plot reco level comparison between data and MC predictions')
-parser.add_argument('-N',type=float,default=300e6, help='Number of events to evaluate')
+parser.add_argument('-N',type=float,default=700e6, help='Number of events to evaluate')
 
 parser.add_argument('--niter', type=int, default=4, help='Omnifold iteration to load')
 parser.add_argument('--q2_int', type=int, default=0, help='Q2 interval to consider')
@@ -141,6 +141,8 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
         plt.ylim([-0.2,0.2])
     if sys == 'stat':
         plt.ylim([0,0.01])
+    elif sys == 'closure':
+        plt.ylim([-0.25,0.25])
     else:
         plt.ylim([-0.12,0.12])
     return fig
@@ -149,15 +151,12 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
 
 mc_info = {}
 weights_data = {}
-clips_data = {}
-
 sys_variations = {}
-sys_clip = {}
 
 # if flags.closure:
 #     mc_info['data'] = MCInfo(data_name,flags.N,flags.data_folder,config,flags.q2_int,is_reco=True) 
 # else:
-mc_info['data'] = MCInfo('Data1516',flags.N,flags.data_folder,config,flags.q2_int,is_reco=True)   
+# mc_info['data'] = MCInfo('Data1516',flags.N,flags.data_folder,config,flags.q2_int,is_reco=True)   
 #Loading weights from training
 for mc_name in mc_names:
     print("{}.h5".format(mc_name))    
@@ -175,8 +174,8 @@ for mc_name in mc_names:
 
 
             # weights_data[flags.mode] = mc_info[mc_name].ReturnWeights(flags.niter,model_name=model_name,mode=flags.mode)
-            weights_data[flags.mode], clips_data[flags.mode] = mc_info[mc_name].LoadTrainedWeights(os.path.join(flags.weights,'nominal_iter{}.h5'.format(flags.niter)))
-            print(weights_data[flags.mode].shape[0])
+            # weights_data[flags.mode] = mc_info[mc_name].LoadTrainedWeights(os.path.join(flags.weights,'nominal_iter{}.h5'.format(flags.niter)))
+            # print(weights_data[flags.mode].shape[0])
 
 
             if flags.sys == True: #load systematic variations
@@ -189,7 +188,7 @@ for mc_name in mc_names:
                     mc_info[sys] = MCInfo(mc_name.replace("Pythia_nominal",sys),int(flags.N),flags.data_folder,config,flags.q2_int,is_reco=flags.plot_reco)
                     # sys_variations[sys] = mc_info[sys].ReturnWeights(
                     #     flags.niter,model_name=model_name,mode=flags.mode)
-                    sys_variations[sys],sys_clip[sys] = mc_info[sys].LoadTrainedWeights( # first evaluate weights, here define a clip mask
+                    sys_variations[sys] = mc_info[sys].LoadTrainedWeights(
                                 os.path.join(flags.weights,'{}_iter{}.h5'.format(sys, flags.niter))
                             )
                     print(mc_name.replace("Pythia_nominal",sys), sys_variations[sys].shape[0])
@@ -198,14 +197,14 @@ for mc_name in mc_names:
                 if not flags.plot_reco: 
                     if 'closure' in opt.sys_sources:
                         #Load non-closure weights
-                        # model_name = '{}/{}_{}_iter{}_step2.h5'.format(
-                        #     flags.weights,base_name,version+'_closure',flags.niter)
-                        # sys_variations['closure'] = mc_info[mc_name].ReturnWeights(
-                        #     flags.niter,model_name=model_name,mode=flags.mode)
-                        print("iteration: ", flags.niter)
-                        sys_variations['closure'] = mc_info[mc_name].LoadTrainedWeights(
-                                os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter))
-                            ) 
+                        model_name = '{}/{}_{}_iter{}_step2.h5'.format(
+                            flags.weights,base_name,version+'_closure',flags.niter)
+                        sys_variations['closure'] = mc_info[mc_name].ReturnWeights(
+                            flags.niter,model_name=model_name,mode=flags.mode)
+                        # print("iteration: ", flags.niter)
+                        # sys_variations['closure'] = mc_info[mc_name].LoadTrainedWeights(
+                        #         os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter))
+                        #     ) 
                         sys_variations['stat'] = []
                         sys_variations['ensem'] = []
 
@@ -239,8 +238,7 @@ for mc_name in mc_names:
     #    sys_variations['model'] = mc_info[mc_name].ReturnWeights(
     #        flags.niter,model_name=model_name,mode=flags.mode)
             
-weight_data = weights_data[flags.mode]
-clip_data = clips_data[flags.mode]
+# weight_data = weights_data[flags.mode]
 
 
 for var in gen_var_names:
@@ -249,9 +247,9 @@ for var in gen_var_names:
 
     binning = opt.dedicated_binning[var]
     if flags.plot_reco:
-        data_var = mc_info['data'].LoadVar(var,clip_data)
+        data_var = mc_info['data'].LoadVar(var)
     else:
-        data_var = mc_info[data_name].LoadVar(var,clip_data)
+        data_var = mc_info[data_name].LoadVar(var)
 
     npanels = 3
     if flags.plot_reco or flags.closure:
@@ -269,13 +267,13 @@ for var in gen_var_names:
     #     ax0.set_yscale('log')
     #     ax1.set_xscale('log')
 
-    # print("var count: ", data_var.shape)
+    print("var count: ", data_var.shape)
     # print("mc info sys weights: ", mc_info[sys].nominal_wgts.shape)
 
     if flags.plot_reco:
         data_pred,_=np.histogram(data_var,weights=mc_info['data'].nominal_wgts,bins=binning,density=True)
     elif not( 'closure' in opt.sys_sources):
-        data_pred,_=np.histogram(data_var,weights=weight_data*mc_info[data_name].nominal_wgts[clip_data],bins=binning,density=True)
+        data_pred,_=np.histogram(data_var,weights=weight_data*mc_info[data_name].nominal_wgts,bins=binning,density=True)
 
     if 'tf_c' in var and flags.saveArrays == True:# or 'tf_f' in var:
         toSave = np.zeros( (len(binning)-1, 2))
@@ -381,13 +379,13 @@ for var in gen_var_names:
                 ratio_sys[sys] = 100*np.divide(sys_pred-mc_pred,mc_pred)
                 # ratio_sys[sys] = np.sqrt(np.abs(ratio_sys[sys]**2 - ratio_sys['stat']**2))
             else:
-                data_sys = mc_info[sys].LoadVar(var,sys_clip[sys]) # a clip mask defined above when loading trained wgts for this sys 
+                data_sys = mc_info[sys].LoadVar(var)
                 print("var count: ", data_sys.shape)
-                # print("mc info sys weights: ", mc_info[sys].nominal_wgts[sys_clip].shape)
+                print("mc info sys weights: ", mc_info[sys].nominal_wgts.shape)
                 if flags.plot_reco:
-                    sys_pred,_ = np.histogram(data_sys,weights=mc_info[sys].nominal_wgts[sys_clip[sys]],bins=binning,density=True)
+                    sys_pred,_ = np.histogram(data_sys,weights=mc_info[sys].nominal_wgts,bins=binning,density=True)
                 else:
-                    sys_pred,_ = np.histogram(data_sys,weights=sys_variations[sys]*mc_info[sys].nominal_wgts[sys_clip[sys]],bins=binning,density=True)
+                    sys_pred,_ = np.histogram(data_sys,weights=sys_variations[sys]*mc_info[sys].nominal_wgts,bins=binning,density=True)
                 
                 if not flags.plot_reco:
                     ratio_sys[sys] = 100*np.divide(sys_pred-data_pred,data_pred)
@@ -473,9 +471,9 @@ for var in gen_var_names:
     for i,mc_name in enumerate(mc_names):
         #Upper canvas
         mc = mc_name.split("_")[0]
-        mc_var = mc_info[mc_name].LoadVar(var,clip_data)
+        mc_var = mc_info[mc_name].LoadVar(var)
 
-        pred,_=np.histogram(mc_var,weights=mc_info[mc_name].nominal_wgts[clip_data],bins=binning,density=True)
+        pred,_=np.histogram(mc_var,weights=mc_info[mc_name].nominal_wgts,bins=binning,density=True)
         # print( "Pythia predictions: ", pred)
 
         if 'tf_c' in var and flags.saveArrays == True:# or 'tf_f' in var:
@@ -494,7 +492,7 @@ for var in gen_var_names:
         else: # plot truth
             ax0.plot(xaxis,pred,color=opt.colors[mc],marker=opt.markers[mc],ms=12,lw=0,markerfacecolor='none',markeredgewidth=3,label=mc)
 
-        ratios[mc] = 100*np.divide(pred-data_pred,data_pred)        
+        # ratios[mc] = 100*np.divide(pred-data_pred,data_pred)        
         # print("ratio at L397",pred)#,ratio[mc])
         # Ratio plot
         displacement = opt.xaxis_disp[mc]
@@ -522,7 +520,7 @@ for var in gen_var_names:
     handles, labels = ax0.get_legend_handles_labels()
     order = [len(labels)-1] + list(range(0,len(labels)-1))
     ax0.legend([handles[idx] for idx in order],[labels[idx] for idx in order],loc='upper left',fontsize=16,ncol=2)
-    ax0.legend()
+    #ax0.legend()
     RatioLabel(ax1,var)
     if flags.plot_reco == False and flags.closure==False:
         ax1.tick_params(axis='x',labelsize=0)
@@ -555,51 +553,51 @@ for var in gen_var_names:
 
 
 
-    # if flags.comp:
-    #     #Compare the non-closure uncertainty
-    #     fig,gs = opt.SetGrid() 
-    #     ax0 = plt.subplot(gs[0])
-    #     ax0.tick_params(axis='x',labelsize=0)
+    if flags.comp:
+        #Compare the non-closure uncertainty
+        fig,gs = opt.SetGrid() 
+        ax0 = plt.subplot(gs[0])
+        ax0.tick_params(axis='x',labelsize=0)
         
-    #     ax1 = plt.subplot(gs[1],sharex=ax0)
+        ax1 = plt.subplot(gs[1],sharex=ax0)
 
-    #     if 'genjet_pt' in var or 'Q2' in var:
-    #         ax0.set_xscale('log')
-    #         ax0.set_yscale('log')
-    #         ax1.set_xscale('log')
+        if 'genjet_pt' in var or 'Q2' in var:
+            ax0.set_xscale('log')
+            ax0.set_yscale('log')
+            ax1.set_xscale('log')
         
-    #     mc_var = mc_info[mc_ref].LoadVar(var)        
-    #     mc_pred,_,_=ax0.hist(mc_var,weights=mc_info[mc_ref].nominal_wgts,bins=binning,label="Target Gen",density=True,color="black",histtype="step")
+        mc_var = mc_info[mc_ref].LoadVar(var)        
+        mc_pred,_,_=ax0.hist(mc_var,weights=mc_info[mc_ref].nominal_wgts,bins=binning,label="Target Gen",density=True,color="black",histtype="step")
 
-    #     opt.FormatFig(xlabel = "", ylabel = r'$1/\sigma$ $\mathrm{d}\sigma/\mathrm{d}$%s'%gen_var_names[var],ax0=ax0)
-    #     if flags.q2_int>0:
-    #         gen_q2 = opt.dedicated_binning['gen_pt_c']      
-    #         text = r"{} < Q$^2$ < {} GeV$^2$".format(int(np.round(gen_q2[flags.q2_int-1],1)),int(np.round(gen_q2[flags.q2_int],1)))
-    #         opt.WriteText(xpos=0.1,ypos=1.03,text = text,ax0=ax0)
+        opt.FormatFig(xlabel = "", ylabel = r'$1/\sigma$ $\mathrm{d}\sigma/\mathrm{d}$%s'%gen_var_names[var],ax0=ax0)
+        if flags.q2_int>0:
+            gen_q2 = opt.dedicated_binning['gen_pt_c']      
+            text = r"{} < Q$^2$ < {} GeV$^2$".format(int(np.round(gen_q2[flags.q2_int-1],1)),int(np.round(gen_q2[flags.q2_int],1)))
+            opt.WriteText(xpos=0.1,ypos=1.03,text = text,ax0=ax0)
 
-    #     ratios = {}
+        ratios = {}
         
-    #     data_var = mc_info[data_name].LoadVar(var)
-    #     for train in weights_data:
-    #         pred,_,_ = ax0.hist(data_var,weights=weights_data[train]*mc_info[data_name].nominal_wgts,bins=binning,
-    #                             label=train,density=True,color=opt.colors[train],histtype="step")
-    #         ratios[train] = 100*np.divide(mc_pred-pred,pred)
+        data_var = mc_info[data_name].LoadVar(var)
+        for train in weights_data:
+            pred,_,_ = ax0.hist(data_var,weights=weights_data[train]*mc_info[data_name].nominal_wgts,bins=binning,
+                                label=train,density=True,color=opt.colors[train],histtype="step")
+            ratios[train] = 100*np.divide(mc_pred-pred,pred)
             
-    #         ax1.plot(xaxis,ratios[train],color=opt.colors[train],marker=opt.markers[train],ms=12,lw=0,markerfacecolor='none',markeredgewidth=3)
+            ax1.plot(xaxis,ratios[train],color=opt.colors[train],marker=opt.markers[train],ms=12,lw=0,markerfacecolor='none',markeredgewidth=3)
 
             
-    #     RatioLabel(ax1)
-    #     ax0.legend(loc='lower right',fontsize=16,ncol=1)
+        RatioLabel(ax1)
+        ax0.legend(loc='lower right',fontsize=16,ncol=1)
 
-    #     plot_folder = '../plots_comp_'+data_name
-    #     if not os.path.exists(plot_folder):
-    #         os.makedirs(plot_folder)
+        plot_folder = '../plots_comp_'+data_name
+        if not os.path.exists(plot_folder):
+            os.makedirs(plot_folder)
 
 
-    #     if flags.q2_int>0:
-    #         fig.savefig(os.path.join(plot_folder,"{}_{}_{}.{}".format(var,flags.niter,flags.q2_int,flags.img_fmt)))
-    #     else:
-    #         fig.savefig(os.path.join(plot_folder,"{}_{}.{}".format(var,flags.niter,flags.img_fmt)))
+        if flags.q2_int>0:
+            fig.savefig(os.path.join(plot_folder,"{}_{}_{}.{}".format(var,flags.niter,flags.q2_int,flags.img_fmt)))
+        else:
+            fig.savefig(os.path.join(plot_folder,"{}_{}.{}".format(var,flags.niter,flags.img_fmt)))
 
 
 
