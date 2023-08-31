@@ -7,8 +7,8 @@ from matplotlib.patches import Rectangle
 
 
 dedicated_binning = {
-    'gen_tf_c':np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
-    'gen_tf_f':np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+    'gen_tf_c':np.array([0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0]),
+    'gen_tf_f':np.array([0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0]),
     #'gen_tf_c':np.linspace(0,1,50),'gen_tf_f':np.linspace(0,1,50),
     #'gen_pt_c':np.array([170,190,220,800]),
     #'gen_pt_f':np.array([170,190,220,800]),
@@ -19,23 +19,28 @@ dedicated_binning = {
     # q/g fraction
     #'gen_pt_c':np.array([300, 600, 1100, 2500]),
     #'gen_pt_f':np.array([300, 600, 1100, 2500]),
-    'gen_pt_c':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2000, 2500]),
-    'gen_pt_f':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2000, 2500]),
+    'gen_pt_c':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2500]),
+    'gen_pt_f':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2500]),
+    #'gen_pt_c':np.array([800, 900, 1000]),
+    #'gen_pt_f':np.array([800, 900, 1000]),
     # log pT test
     #'gen_pt_c':np.linspace(5.25,6.5,21), 'gen_pt_f':np.linspace(5.25,6.5,21), # ~190 GeV
     #'gen_trkpt_c':np.linspace(2,7,21), 'gen_trkpt_f':np.linspace(2,7,21),
-    'tf_c':np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]), 
-    'tf_f':np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),  
+    'tf_c':np.array([0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0]), 
+    'tf_f':np.array([0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0]),  
+    #'tf_c':np.linspace(0,1,50),'tf_f':np.linspace(0,1,50),
     # q/g fraction
     #'pt_c':np.array([300, 600, 1100, 2500]),
     #'pt_f':np.array([300, 600, 1100, 2500]),
-    'pt_c':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400]),#, 1600, 2000, 2500]),
-    'pt_f':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400]),#, 1600, 2000, 2500]),
+    'pt_c':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2500]),
+    'pt_f':np.array([200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 2500]),
+    #'pt_c':np.array([800, 900, 1000]),
+    #'pt_f':np.array([800, 900, 1000]),
     # log pT test
     #'pt_c':np.linspace(4,7,21),'pt_f':np.linspace(4,7,21),
     #'trkpt_c':np.linspace(2,7,21),'trkpt_f':np.linspace(2,7,21),
     #'pt_c':np.linspace(100,500,20), 'pt_f':np.linspace(100,500,20),
-    #'trkpt_c':np.linspace(0,500,25), 'trkpt_f':np.linspace(0,500,25),
+    'trkpt_c':np.linspace(0,500,25), 'trkpt_f':np.linspace(0,500,25),
 }
 
 fixed_yaxis = {
@@ -49,16 +54,24 @@ fixed_yaxis = {
     }
 
 sys_sources = {
-    'Pythia_OFF': 'orangered',#'Pythia_UP': 'deepskyblue','Pythia_DOWN': 'yellowgreen', # PURW
-    'Pythia_CORE': 'orchid',#'Pythia_EDGE': 'yellowgreen', # TILE
-    #'Sherpa_Lund': 'orange','Sherpa_AHADIC': 'yellowgreen', # Modeling
-    #'Herwig_Dipole': 'deepskyblue','Herwig_Angular': 'orchid', # Modeling
-    #'Pythia_TRACK1': 'orange','Pythia_TRACK2': 'orchid','Pythia_TRACK3': 'deepskyblue','Pythia_TRACK4': 'yellowgreen',   
+    'Pythia_UP': 'orange',
+    'Pythia_DOWN': 'blue', # PURW
+    #'Pythia_CORE': 'brown',#'Pythia_EDGE': 'yellowgreen', # TILE
+    #'Sherpa_Lund': 'deepskyblue','Sherpa_AHADIC': 'blue', # Modeling
+    #'Herwig_Dipole': 'red','Herwig_Angular': 'orchid', # Modeling
+    #'Pythia_TRACK1': 'red',
+    #'Pythia_TRACK2': 'orchid',
+    #'Pythia_TRACK3': 'deepskyblue',
+    #'Pythia_TRACK4': 'yellowgreen',   
     #'Hadronization':'orchid',
     #'Parton Shower': 'yellowgreen',
-    'stat':'tab:pink',
+    #'stat':'tab:pink',
     #'ensem':'tab:pink',
     #'closure':'skyblue',
+    #'Pythia_JES45': 'orange',
+    #'Pythia_JES46': 'orangered',
+    #'Pythia_JES47': 'deepskyblue',
+    #'Pythia_JES48': 'yellowgreen',
     # 'Pythia_JES1': 'orangered','Pythia_JES2': 'deepskyblue','Pythia_JES3': 'yellowgreen','Pythia_JES4': 'orchid',
     # 'Pythia_JES5': 'orange','Pythia_JES6': 'orangered','Pythia_JES7': 'deepskyblue','Pythia_JES8': 'yellowgreen','Pythia_JES9': 'orchid',
     # 'Pythia_JES10': 'orange','Pythia_JES11': 'orangered','Pythia_JES12': 'deepskyblue','Pythia_JES13': 'yellowgreen','Pythia_JES14': 'orchid',
@@ -68,7 +81,8 @@ sys_sources = {
     # 'Pythia_JES30': 'orange','Pythia_JES31': 'orangered','Pythia_JES32': 'deepskyblue','Pythia_JES33': 'yellowgreen','Pythia_JES34': 'orchid',
     # 'Pythia_JES35': 'orange','Pythia_JES36': 'orangered','Pythia_JES37': 'deepskyblue','Pythia_JES38': 'yellowgreen','Pythia_JES39': 'orchid',
     # 'Pythia_JES40': 'orange','Pythia_JES41': 'orangered','Pythia_JES42': 'deepskyblue','Pythia_JES43': 'yellowgreen','Pythia_JES44': 'orchid',
-    #'Pythia_JES45': 'orange','Pythia_JES46': 'orangered','Pythia_JES47': 'deepskyblue','Pythia_JES48': 'yellowgreen',
+    #'Pythia_JES45': 'orange','Pythia_JES46': 'orangered','Pythia_JES47': 'deepskyblue',
+    #'Pythia_JES48': 'yellowgreen',
     #'Pythia_JES49': 'orchid','Pythia_JES50': 'orange','Pythia_JES51': 'orangered','Pythia_JES52': 'deepskyblue',
     # 'Pythia_JES53': 'yellowgreen','Pythia_JES54': 'orchid','Pythia_JES55': 'orange','Pythia_JES56': 'orangered','Pythia_JES57': 'deepskyblue','Pythia_JES58': 'yellowgreen','Pythia_JES59': 'orchid',
     # 'Pythia_JES60': 'orange','Pythia_JES61': 'orangered','Pythia_JES62': 'deepskyblue','Pythia_JES63': 'yellowgreen','Pythia_JES64': 'orchid',
@@ -113,17 +127,17 @@ reco_vars = {
     'tf_f':r'TF forward $(p_T^{charged}/p_T^{all})$', 
     'pt_c':r'pT central$(p_T^{all_c})$', 
     'pt_f':r'pT forward $(p_T^{all_f})$', 
-    'trkpt_c':r'track pT central$(p_T^{charged_c})$', 
-    'trkpt_f':r'track pT forward $(p_T^{charged_f})$', 
+    #'trkpt_c':r'track pT central$(p_T^{charged_c})$', 
+    #'trkpt_f':r'track pT forward $(p_T^{charged_f})$', 
 }
 
 gen_vars = {
     'gen_tf_c':r'Gen TF central $(p_T^{charged}/p_T^{all})$', 
     'gen_tf_f':r'Gen TF forward $(p_T^{charged}/p_T^{all})$', 
-    'gen_pt_c':r'pT central$(p_T^{all_c})$', 
-    'gen_pt_f':r'pT forward $(p_T^{all_f})$', 
-    'gen_trkpt_c':r'track pT central$(p_T^{charged_c})$', 
-    'gen_trkpt_f':r'track pT forward $(p_T^{charged_f})$', 
+    #'gen_pt_c':r'pT central$(p_T^{all_c})$', 
+    #'gen_pt_f':r'pT forward $(p_T^{all_f})$', 
+    #'gen_trkpt_c':r'track pT central$(p_T^{charged_c})$', 
+    #'gen_trkpt_f':r'track pT forward $(p_T^{charged_f})$', 
 }
 
 var_truth_translate = {

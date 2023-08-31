@@ -7,12 +7,17 @@ from matplotlib.font_manager import FontProperties
 import argparse
 import os
 import h5py as h5
-from omnifold import  Multifold, Scaler, LoadJson
-from SaveWeights import MCInfo
+import json, yaml
+# from omnifold import  Multifold, Scaler, LoadJson
+# from SaveWeights import MCInfo
 import sys
 import collections # to have nested dicts
 sys.path.append('../')
 import shared.options as opt
+
+def LoadJson(file_name):
+    JSONPATH = os.path.join(file_name)
+    return yaml.safe_load(open(JSONPATH))
 
 opt.SetStyle()
 
@@ -139,7 +144,7 @@ if flags.ibu:
             pT_x = np.array(f['xaxis'][:])
             if i == 0:
                 q_data_ibu = np.array(f['nominal'][:])
-                q_fine_data_ibu = np.array(f['m_fine'][:])
+                # q_fine_data_ibu = np.array(f['m_fine'][:])
                 q_py_ibu = np.array(f['coarse'][:])
                 q_fine_py_ibu = np.array(f['fine'][:])
                 q_corr_ibu = np.array(f['corr'][:])
@@ -147,7 +152,7 @@ if flags.ibu:
                     q_sys_ibu = np.array(f['sys_'+flavor][:])
             else:
                 g_data_ibu = np.array(f['nominal'][:])
-                g_fine_data_ibu = np.array(f['m_fine'][:])
+                # g_fine_data_ibu = np.array(f['m_fine'][:])
                 g_py_ibu = np.array(f['coarse'][:])
                 g_fine_py_ibu = np.array(f['fine'][:])
                 g_corr_ibu = np.array(f['corr'][:])

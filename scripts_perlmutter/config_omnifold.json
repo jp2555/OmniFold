@@ -1,5 +1,5 @@
 {'General': {
-    'NITER': 5,
+    'NITER': 15,
     'LR': 1e-4,
     'BATCH_SIZE': 16384,
     'EPOCHS': 100,
@@ -11,5 +11,5 @@
     'NPOINT': 30,
 },    
 'MLP':{
-    'NTRIAL':10,
+    'NTRIAL':100,
     }}

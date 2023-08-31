@@ -29,8 +29,10 @@ parser.add_argument('--sys', action='store_true', default=False,help='Evaluate r
 parser.add_argument('--comp', action='store_true', default=False,help='Compare closure unc. from different methods')
 parser.add_argument('--plot_reco', action='store_true', default=False,help='Plot reco level comparison between data and MC predictions')
 parser.add_argument('-N',type=float,default=300e6, help='Number of events to evaluate')
+parser.add_argument('--clip',type=float,default=100, help='quantile to clip large trained weights')
 
 parser.add_argument('--niter', type=int, default=4, help='Omnifold iteration to load')
+parser.add_argument('--nom', default='trial1', help='version of nominal result...')
 parser.add_argument('--q2_int', type=int, default=0, help='Q2 interval to consider')
 parser.add_argument('--img_fmt', default='png', help='Format of the output figures')
 
@@ -89,8 +91,8 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
     total_sys = np.zeros(len(xaxis))
     max_y, min_y = [], []
     sys_name = {
-            'Pythia_TRACK1':'Incl. Eff.',
-            'Pythia_TRACK2':'Saggita Bias',
+            'Pythia_TRACK2':'Incl. Eff.',
+            'Pythia_TRACK1':'Saggita Bias',
             'Pythia_TRACK3':'CTIDE',
             'Pythia_TRACK4':'Fake Rate',
             'Pythia_JES45':'Composition up',
@@ -175,7 +177,9 @@ for mc_name in mc_names:
 
 
             # weights_data[flags.mode] = mc_info[mc_name].ReturnWeights(flags.niter,model_name=model_name,mode=flags.mode)
-            weights_data[flags.mode], clips_data[flags.mode] = mc_info[mc_name].LoadTrainedWeights(os.path.join(flags.weights,'nominal_iter{}.h5'.format(flags.niter)))
+            weights_data[flags.mode], clips_data[flags.mode] = mc_info[mc_name].LoadTrainedWeights(
+                os.path.join(flags.weights,'nominal_iter{}_ver_{}.h5'.format(flags.niter,flags.nom)),flags.clip 
+                )
             print(weights_data[flags.mode].shape[0])
 
 
@@ -190,7 +194,7 @@ for mc_name in mc_names:
                     # sys_variations[sys] = mc_info[sys].ReturnWeights(
                     #     flags.niter,model_name=model_name,mode=flags.mode)
                     sys_variations[sys],sys_clip[sys] = mc_info[sys].LoadTrainedWeights( # first evaluate weights, here define a clip mask
-                                os.path.join(flags.weights,'{}_iter{}.h5'.format(sys, flags.niter))
+                                os.path.join(flags.weights,'{}_iter{}.h5'.format(sys, flags.niter)),flags.clip
                             )
                     print(mc_name.replace("Pythia_nominal",sys), sys_variations[sys].shape[0])
 
@@ -204,7 +208,7 @@ for mc_name in mc_names:
                         #     flags.niter,model_name=model_name,mode=flags.mode)
                         print("iteration: ", flags.niter)
                         sys_variations['closure'] = mc_info[mc_name].LoadTrainedWeights(
-                                os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter))
+                                os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter)),flags.clip
                             ) 
                         sys_variations['stat'] = []
                         sys_variations['ensem'] = []
@@ -213,7 +217,7 @@ for mc_name in mc_names:
                         sys_variations['ensem'] = []
                         sys_variations['stat'] = [
                             mc_info[mc_name].LoadTrainedWeights(
-                                os.path.join(flags.weights,'{}_{}.h5'.format(mc_name,nstrap))
+                                os.path.join(flags.weights,'{}_{}.h5'.format(mc_name,nstrap)),flags.clip
                                 # os.path.join(flags.data_folder,'{}_{}.h5'.format(mc_name,nstrap))
                             ) for nstrap in range(1,config['NBOOTSTRAP']+1)]
                         # print(sys_variations['stat'])
@@ -222,7 +226,7 @@ for mc_name in mc_names:
                         sys_variations['stat'] = []
                         sys_variations['ensem'] = [
                             mc_info[mc_name].LoadTrainedWeights(
-                                os.path.join(flags.weights,'{}_trial{}.h5'.format(mc_name,ntrial))
+                                os.path.join(flags.weights,'{}_trial{}.h5'.format(mc_name,ntrial)),flags.clip
                                 # os.path.join(flags.data_folder,'{}_{}.h5'.format(mc_name,ntrial))
                             ) for ntrial in range(1,20)]
                         # print(sys_variations['ensem'])
@@ -269,8 +273,10 @@ for var in gen_var_names:
     #     ax0.set_yscale('log')
     #     ax1.set_xscale('log')
 
-    # print("var count: ", data_var.shape)
-    # print("mc info sys weights: ", mc_info[sys].nominal_wgts.shape)
+    print("var count: ", data_var.shape)
+    print("mc info data weights: ", mc_info[data_name].nominal_wgts[clip_data].shape)
+    print("weight data shape: ", weight_data.shape)
+    # input()
 
     if flags.plot_reco:
         data_pred,_=np.histogram(data_var,weights=mc_info['data'].nominal_wgts,bins=binning,density=True)
@@ -382,8 +388,9 @@ for var in gen_var_names:
                 # ratio_sys[sys] = np.sqrt(np.abs(ratio_sys[sys]**2 - ratio_sys['stat']**2))
             else:
                 data_sys = mc_info[sys].LoadVar(var,sys_clip[sys]) # a clip mask defined above when loading trained wgts for this sys 
-                print("var count: ", data_sys.shape)
-                # print("mc info sys weights: ", mc_info[sys].nominal_wgts[sys_clip].shape)
+                print("sys var count: ", data_sys.shape)
+                print("mc info sys weights: ", mc_info[sys].nominal_wgts[sys_clip[sys]].shape)
+                # input()
                 if flags.plot_reco:
                     sys_pred,_ = np.histogram(data_sys,weights=mc_info[sys].nominal_wgts[sys_clip[sys]],bins=binning,density=True)
                 else:
@@ -399,6 +406,15 @@ for var in gen_var_names:
                                         bins=binning,density=True)
                     ratio_sys[sys] = 100*np.divide(sys_pred-pred,pred)
                 total_sys+= ratio_sys[sys]**2
+
+            if flags.saveArrays == True:
+                toSave = np.zeros( (len(binning)-1, 2))
+                toSave[:, 0] = xaxis
+                toSave[:, 1] = ratio_sys[sys]
+                df = h5.File(var+"_"+sys+"_"+str(flags.q2_int)+'.h5', 'w')
+                df['xaxis']=toSave[:,0]
+                df[var]=toSave[:, 1]
+                df.close() 
 
         
         for ibin in range(len(xaxis)):
@@ -551,8 +567,7 @@ for var in gen_var_names:
         fig.savefig(os.path.join(plot_folder,"{}_{}.{}".format(var,flags.niter,flags.img_fmt)))
         if flags.sys:
             fig_sys = PlotUnc(xaxis,var,ratio_sys,gen_var_names[var],text_fiducial)
-            fig_sys.savefig(os.path.join(plot_folder,"sys_{}_{}.{}".format(var,flags.niter,flags.img_fmt)))
-
+            fig_sys.savefig(os.path.join(plot_folder,"sys_{}_{}_{}_nom{}.{}".format(var,flags.niter,flags.clip,flags.nom, flags.img_fmt)))
 
 
     # if flags.comp:

@@ -320,7 +320,7 @@ class Multifold():
     def reweight(self,events,model):
         f = np.nan_to_num(model.predict(events, batch_size=10000),posinf=1,neginf=0)
         weights = f / (1. - f)
-        #weights = np.clip(weights,0,10)
+        #weights = np.clip(weights,0,50)
         weights = weights[:,0]
         return np.squeeze(np.nan_to_num(weights,posinf=1))
 

@@ -24,8 +24,9 @@ class MCInfo():
         self.file = h5.File(os.path.join(data_folder,"{}.h5".format(mc_name)),'r')
         self.is_reco = is_reco
         self.config = config
-        self.pTbin = (use_fiducial_mask==False)
-        # self.clip = (self.is_reco==False)
+        # No longer remember why......
+        # self.pTbin = (use_fiducial_mask==False)
+        self.q2_int = q2_int
 
         if not self.is_reco:
             # self.truth_mask = self.file['pass_truth'][:self.N] #pass truth region definition
@@ -58,10 +59,18 @@ class MCInfo():
 
         self.nominal_wgts = self.file['wgt'][:self.N][self.mask]
             
-    def LoadVar(self,var,clip):
+    def LoadVar(self,var):#,clip):
 
-        return_var = self.file[var][:self.N][self.mask][clip]
-        
+        # if 'closure' or 'had' or 'ps' or 'model' in opt.sys_sources:
+        #     return_var = self.file[var][:self.N][self.mask]
+        # else:
+        print(self.file[var][:self.N][self.mask].shape)
+        # input()
+        # if self.q2_int>0:
+        #     return_var = self.file[var][:self.N][self.mask][clip[0,:]]
+        # else:
+        return_var = self.file[var][:self.N][self.mask]
+
         if 'tau' in var:
             return_var = np.ma.log(return_var).filled(0)
             
@@ -112,18 +121,33 @@ class MCInfo():
         mfold.model2.load_weights(model_name)
         return mfold.reweight(mfold.mc_gen,mfold.model2)[self.mask]        
 
-    def LoadTrainedWeights(self,file_name):
+    def LoadTrainedWeights(self,file_name):  #,percentile):
+        print("pT index: ", self.q2_int)
         h5file = h5.File(file_name,'r')
         weights = h5file['wgt'][:self.N]#[self.mask]
-        upper = np.percentile( weights, 99.7, axis=0) # 99.7 for 3 sigma
-        clip = (weights < upper)
 
-        weights = weights[clip]
-
+        # get the weight number at an input percentile #
+        # upper = np.percentile( weights, percentile, axis=0) # 99.7 for 3 sigma
+        # clip = (weights <= upper)
+        # self.mask *= clip[0,:]
+        # print(clip.shape)
         # print(weights.shape)
-        if self.pTbin:
+
+        if self.q2_int>0:
             weights = weights[0,:][self.mask]
-        return weights, clip
+            # input()
+        else:
+            weights = weights #[clip]
+
+        return weights #, clip
+
+    # Vinny
+    # def LoadTrainedWeights(self,file_name):
+    #     print("pT index: ", self.q2_int)
+    #     h5file = h5.File(file_name,'r')
+    #     weights = h5file['wgt'][:self.N]
+    #     weights=weights[self.mask]
+    #     return weights
         
             
 
@@ -132,6 +156,7 @@ if __name__=='__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', default='/pscratch/sd/j/jing/h5', help='Folder containing data and MC files')
+    parser.add_argument('--weights', default='/pscratch/sd/j/jing/H1PCT/weights', help='Folder to store trained weights')
     parser.add_argument('--mode', default='standard', help='Which train type to load [hybrid/standard/PCT]')
     parser.add_argument('--config', default='config_6d_general.json', help='Basic config file containing general options')
     parser.add_argument('--out', default='/pscratch/sd/j/jing/H1PCT/weights_saved/', help='Folder to save the weights')
@@ -139,7 +164,8 @@ if __name__=='__main__':
     parser.add_argument('--sys', action='store_true', default=False,help='Evaluate results with systematic uncertainties')
     parser.add_argument('--pt', action='store_true', default=False,help='weights saved to bin in pT?')
     parser.add_argument('--nom', action='store_true', default=False,help='Evaluate results with nominal')
-    parser.add_argument('-N',type=float,default=700e6, help='Number of events to evaluate')
+    parser.add_argument('--closure', action='store_true', default=False,help='Evaluate results with closure')
+    parser.add_argument('-N',type=float,default=300e6, help='Number of events to evaluate')
    
     flags = parser.parse_args()
     config=LoadJson(flags.config)
@@ -169,10 +195,11 @@ if __name__=='__main__':
             mfold = mc_info.LoadDataWeights(flags.niter,mode=flags.mode)
             
             print("nominal at iteration: ", flags.niter)
-            model_strap = '/pscratch/sd/j/jing/H1PCT/weights_raw_300e6_median/{}_Pythia_nominal_iter{}_step2.h5'.format(
-            base_name, flags.niter )
-            weights =  mc_info.Reweight(mfold,model_name=model_strap)            
-            with h5.File(os.path.join(flags.out,'nominal_iter{}.h5'.format(flags.niter)),'w') as fout:
+            model_strap = '{}/{}_Pythia_nominal_iter{}_step2.h5'.format(
+            flags.weights,base_name, flags.niter )
+            weights =  mc_info.Reweight(mfold,model_name=model_strap)       
+            ver = flags.weights.split("/")[-1].split("_")[-1]     
+            with h5.File(os.path.join(flags.out,'nominal_iter{}_ver_{}.h5'.format(flags.niter, ver)),'w') as fout:
                 dset = fout.create_dataset('wgt', data=weights)
             del weights
             K.clear_session()
@@ -187,10 +214,27 @@ if __name__=='__main__':
                 mfold = mc_info.LoadDataWeights(flags.niter,mode=flags.mode)
 
                 if sys == 'stat': continue
-                model_strap = '/pscratch/sd/j/jing/H1PCT/weights_raw_300e6_median/{}_{}_iter{}_step2.h5'.format(
-                base_name,sys,flags.niter)
+                model_strap = '{}/{}_{}_iter{}_step2.h5'.format(
+                flags.weights,base_name,sys,flags.niter)
                 weights =  mc_info.Reweight(mfold,model_name=model_strap)            
                 with h5.File(os.path.join(flags.out,'{}_iter{}.h5'.format(sys, flags.niter)),'w') as fout:
+                    dset = fout.create_dataset('wgt', data=weights)
+                del weights
+                K.clear_session()
+            del mc_info
+
+
+        ##### closure
+        if flags.closure:
+            print("{}.h5".format(mc_name))    
+            mc_info = MCInfo(mc_name,flags.N,flags.data_folder,config,use_fiducial_mask=mask)
+            mfold = mc_info.LoadDataWeights(flags.niter,mode=flags.mode)
+            for i in [4]:
+                print("iteration: ", i)
+                model_strap = '{}}/{}_Pythia_nominal_closure_iter{}_step2.h5'.format(
+                flags.weights,base_name,i)
+                weights =  mc_info.Reweight(mfold,model_name=model_strap)            
+                with h5.File(os.path.join(flags.out,'closure_iter{}.h5'.format(i)),'w') as fout:
                     dset = fout.create_dataset('wgt', data=weights)
                 del weights
                 K.clear_session()
@@ -220,21 +264,6 @@ if __name__=='__main__':
         #     print(ntrial)
         #     weights =  mc_info.Reweight(mfold,model_name=model_strap.replace('X',str(ntrial)))            
         #     with h5.File(os.path.join(flags.out,'{}_trial{}.h5'.format(mc_name,ntrial)),'w') as fout:
-        #         dset = fout.create_dataset('wgt', data=weights)
-        #     del weights
-        #     K.clear_session()
-        # del mc_info
-
-        ##### closure
-        # print("{}.h5".format(mc_name))    
-        # mc_info = MCInfo(mc_name,flags.N,flags.data_folder,config,use_fiducial_mask=mask)
-        # mfold = mc_info.LoadDataWeights(flags.niter,mode=flags.mode)
-        # for i in [3,5]:
-        #     print("iteration: ", i)
-        #     model_strap = '/pscratch/sd/j/jing/H1PCT/weights/{}_Pythia_nominal_closure_iter{}_step2.h5'.format(
-        #     base_name,i)
-        #     weights =  mc_info.Reweight(mfold,model_name=model_strap)            
-        #     with h5.File(os.path.join(flags.out,'closure_iter{}.h5'.format(i)),'w') as fout:
         #         dset = fout.create_dataset('wgt', data=weights)
         #     del weights
         #     K.clear_session()

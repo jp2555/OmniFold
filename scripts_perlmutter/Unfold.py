@@ -25,10 +25,10 @@ if gpus:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--data_folder', default='/pscratch/sd/j/jing/h5', help='Folder containing data and MC files')
+parser.add_argument('--data_folder', default='/global/cfs/cdirs/m3246/jing', help='Folder containing data and MC files')
 parser.add_argument('--mode', default='standard', help='[standard/hybrid/PCT]')
-parser.add_argument('--config', default='config_general.json', help='Basic config file containing general options')
-parser.add_argument('--nevts', type=float,default=30e6, help='Number of events to load')
+parser.add_argument('--config', default='config_6d_general.json', help='Basic config file containing general options')
+parser.add_argument('--nevts', type=float,default=300e6, help='Number of events to load')
 parser.add_argument('--closure', action='store_true', default=False,help='Train omnifold for a closure test using simulation')
 parser.add_argument('--nstrap', type=int,default=0, help='Unique id for bootstrapping')
 parser.add_argument('--ntrial', type=int,default=1, help='Unique id for the nth trial of the same config for NN stability test')
@@ -83,7 +83,7 @@ for mc_name in mc_names:
 
 
     if flags.closure:
-        ntest = int(10e6) #about same number of data events after reco selection
+        ntest = int(30e6) #about same number of data events after reco selection
         data_vars = np.concatenate([np.expand_dims(data[var][hvd.rank():ntest:hvd.size()],-1) for var in var_names],-1)
         weights_data = data['wgt'][hvd.rank():ntest:hvd.size()]
         pass_reco = data['pass_reco'][hvd.rank():ntest:hvd.size()] #pass reco selection

@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Dense, Input, Dropout, Conv1D, BatchNormaliz
 from tensorflow.keras.models import Model
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
 
 
 
@@ -30,6 +31,26 @@ import sys
 
 #     return inputs,outputs
 
+# Records the weights throughout the training process
+weights_history = []
+
+# A custom callback
+# https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback
+class MyCallback(tf.keras.callbacks.Callback):
+
+    def on_batch_end(self, batch, logs):
+        weights, _biases = model.get_weights()
+        w = weights
+        weights = [w1[0]]
+        print('on_batch_end() model.weights:', weights)
+        weights_history.append(weights)
+
+# callback = MyCallback()
+
+# plt.figure(1, figsize=(6, 3))
+# plt.plot(weights_history)
+# plt.show()
+
 
 def MLP(nvars,NTRIALS=10):
     inputs = Input((nvars, ))
@@ -40,10 +61,14 @@ def MLP(nvars,NTRIALS=10):
         layer = Dense(64,activation='relu')(layer)
         #layer = Dropout(0.05)(layer) 
         layer = Dense(1,activation='sigmoid')(layer)
+        # do not do this - will arbitrarily bias the output NN
+        # layer = tf.clip_by_value(layer, clip_value_min=0, clip_value_max=10)
         net_trials.append(layer)
 
-    outputs = tf.reduce_mean(net_trials,0) #Average over trials
-    #outputs = tf.keras.activations.sigmoid(outputs)
     # variance = tfp.stats.variance(net_trials,0)
+    # variance = tf.math.reduce_variance(net_trials,0)
     # variance = tfp.stats.percentile(net_trials, [10,90], interpolation='midpoint',axis=0)
+
+    outputs = tf.reduce_mean(net_trials,0) #Average over trials
+    #outputs = tfp.stats.percentile(net_trials, 50.0, interpolation='midpoint', axis=0) # median less sensitive to outliers
     return inputs,outputs

@@ -29,6 +29,7 @@ parser.add_argument('--sys', action='store_true', default=False,help='Evaluate r
 parser.add_argument('--comp', action='store_true', default=False,help='Compare closure unc. from different methods')
 parser.add_argument('--plot_reco', action='store_true', default=False,help='Plot reco level comparison between data and MC predictions')
 parser.add_argument('-N',type=float,default=700e6, help='Number of events to evaluate')
+parser.add_argument('--clip',type=float,default=100, help='quantile to clip large trained weights')
 
 parser.add_argument('--niter', type=int, default=4, help='Omnifold iteration to load')
 parser.add_argument('--q2_int', type=int, default=0, help='Q2 interval to consider')
@@ -142,7 +143,7 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
     if sys == 'stat':
         plt.ylim([0,0.01])
     elif sys == 'closure':
-        plt.ylim([-0.25,0.25])
+        plt.ylim([-0.1,0.1])
     else:
         plt.ylim([-0.12,0.12])
     return fig
@@ -152,6 +153,7 @@ def PlotUnc(xaxis,var,values,xlabel='',add_text=''):
 mc_info = {}
 weights_data = {}
 sys_variations = {}
+sys_clip = {}
 
 # if flags.closure:
 #     mc_info['data'] = MCInfo(data_name,flags.N,flags.data_folder,config,flags.q2_int,is_reco=True) 
@@ -174,7 +176,7 @@ for mc_name in mc_names:
 
 
             # weights_data[flags.mode] = mc_info[mc_name].ReturnWeights(flags.niter,model_name=model_name,mode=flags.mode)
-            # weights_data[flags.mode] = mc_info[mc_name].LoadTrainedWeights(os.path.join(flags.weights,'nominal_iter{}.h5'.format(flags.niter)))
+            # weights_data[flags.mode],data_clip = mc_info[mc_name].LoadTrainedWeights(os.path.join(flags.weights,'nominal_iter{}.h5'.format(flags.niter)))
             # print(weights_data[flags.mode].shape[0])
 
 
@@ -199,12 +201,12 @@ for mc_name in mc_names:
                         #Load non-closure weights
                         model_name = '{}/{}_{}_iter{}_step2.h5'.format(
                             flags.weights,base_name,version+'_closure',flags.niter)
-                        sys_variations['closure'] = mc_info[mc_name].ReturnWeights(
-                            flags.niter,model_name=model_name,mode=flags.mode)
+                        # sys_variations['closure'] = mc_info[mc_name].ReturnWeights(
+                        #     flags.niter,model_name=model_name,mode=flags.mode)
                         # print("iteration: ", flags.niter)
-                        # sys_variations['closure'] = mc_info[mc_name].LoadTrainedWeights(
-                        #         os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter))
-                        #     ) 
+                        sys_variations['closure'], sys_clip['closure'] = mc_info[mc_name].LoadTrainedWeights(
+                                os.path.join(flags.weights,'closure_iter{}.h5'.format(flags.niter)),flags.clip
+                            ) 
                         sys_variations['stat'] = []
                         sys_variations['ensem'] = []
 
@@ -267,13 +269,13 @@ for var in gen_var_names:
     #     ax0.set_yscale('log')
     #     ax1.set_xscale('log')
 
-    print("var count: ", data_var.shape)
-    # print("mc info sys weights: ", mc_info[sys].nominal_wgts.shape)
+    # print("var count: ", data_var.shape)
+    # # print("mc info sys weights: ", mc_info[sys].nominal_wgts.shape)
 
-    if flags.plot_reco:
-        data_pred,_=np.histogram(data_var,weights=mc_info['data'].nominal_wgts,bins=binning,density=True)
-    elif not( 'closure' in opt.sys_sources):
-        data_pred,_=np.histogram(data_var,weights=weight_data*mc_info[data_name].nominal_wgts,bins=binning,density=True)
+    # if flags.plot_reco:
+    #     data_pred,_=np.histogram(data_var,weights=mc_info['data'].nominal_wgts,bins=binning,density=True)
+    # elif not( 'closure' in opt.sys_sources):
+    #     data_pred,_=np.histogram(data_var,weights=weight_data*mc_info[data_name].nominal_wgts,bins=binning,density=True)
 
     if 'tf_c' in var and flags.saveArrays == True:# or 'tf_f' in var:
         toSave = np.zeros( (len(binning)-1, 2))
@@ -310,21 +312,21 @@ for var in gen_var_names:
             stat_unc = []
             #print( len(sys_variations['stat']))
             #input()
-            for strap in range(len(sys_variations['stat'])):
-                sys_pred,_ = np.histogram(data_var,weights=sys_variations['stat'][strap]*mc_info[data_name].nominal_wgts,bins=binning,density=True)
-                stat_unc.append(sys_pred)
+            # for strap in range(len(sys_variations['stat'])):
+            #     sys_pred,_ = np.histogram(data_var,weights=sys_variations['stat'][strap]*mc_info[data_name].nominal_wgts,bins=binning,density=True)
+            #     stat_unc.append(sys_pred)
 
-            ratio_sys['stat'] = 100*np.std(stat_unc,axis=0)/np.mean(stat_unc,axis=0)
-            print(ratio_sys['stat'])
+            # ratio_sys['stat'] = 100*np.std(stat_unc,axis=0)/np.mean(stat_unc,axis=0)
+            # print(ratio_sys['stat'])
 
-            if '_c' in var and flags.saveArrays == True:
-                toSave_stat = np.zeros( (len(binning)-1, 2))
-                toSave_stat[:, 0] = xaxis
-                toSave_stat[:, 1] = ratio_sys['stat']
-                df = h5.File("stat_"+var+"_"+str(flags.q2_int)+'.h5', 'w')
-                df['xaxis']=toSave_stat[:,0]
-                df[var]=toSave_stat[:, 1]
-                df.close()  
+            # if '_c' in var and flags.saveArrays == True:
+            #     toSave_stat = np.zeros( (len(binning)-1, 2))
+            #     toSave_stat[:, 0] = xaxis
+            #     toSave_stat[:, 1] = ratio_sys['stat']
+            #     df = h5.File("stat_"+var+"_"+str(flags.q2_int)+'.h5', 'w')
+            #     df['xaxis']=toSave_stat[:,0]
+            #     df[var]=toSave_stat[:, 1]
+            #     df.close()  
                 # input()
 
             #Ensemble variance
@@ -338,11 +340,11 @@ for var in gen_var_names:
             #ratio_sys['ensem'] = 100*np.std(ensem_unc,axis=0)/np.mean(ensem_unc,axis=0) # axis=0 to compute the statistical property for each bin
            # ratio_sys['ensem'] = 100*(np.max( np.abs(ensem_unc-np.mean(ensem_unc,axis=0)),axis=0)  )/np.mean(ensem_unc,axis=0)
             #print(ratio_sys['ensem'])
-        else:
-            counts,_ = np.histogram(data_var,bins=binning)
-            ratio_sys['stat'] = np.sqrt(counts)/counts*100
+        # else:
+            # counts,_ = np.histogram(data_var,bins=binning)
+            # ratio_sys['stat'] = np.sqrt(counts)/counts*100
             
-        total_sys+= ratio_sys['stat']**2
+        # total_sys+= ratio_sys['stat']**2
         #Plot data and stat error
         # print(xaxis,data_pred,np.abs(binning),data_pred*ratio_sys['stat']/100.)
         # ax0.errorbar(xaxis,data_pred,yerr = data_pred*ratio_sys['stat']/100.,fmt='o',ms=12,color='k',label='Data')
@@ -373,6 +375,7 @@ for var in gen_var_names:
                 ratio_sys[sys] = 100*np.divide(sys_pred-data_pred,data_pred)
                 # ratio_sys[sys] = np.sqrt(np.abs(ratio_sys[sys]**2 - ratio_sys['stat']**2))
             elif sys == 'closure':
+                # data_var = mc_info[data_name].LoadVar(var,sys_clip[sys])
                 sys_pred,_ = np.histogram(data_var,weights=sys_variations[sys]*mc_info[data_name].nominal_wgts,bins=binning,density=True)
                 mc_var = mc_info[mc_ref].LoadVar(var)
                 mc_pred,_ = np.histogram(mc_var,weights=mc_info[mc_ref].nominal_wgts,bins=binning,density=True)
