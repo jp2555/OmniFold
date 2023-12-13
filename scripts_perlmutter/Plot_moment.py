@@ -19,15 +19,15 @@ opt.SetStyle()
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--data_folder', default='/global/cfs/cdirs/m3246/jing/h5_fullRun2/', help='Folder containing data and MC files')
-parser.add_argument('--weights', default='/pscratch/sd/j/jing/H1PCT/weights_saved', help='Folder to store trained weights')
+parser.add_argument('--data_folder', default='/global/cfs/cdirs/m3246/jing/', help='Folder containing data and MC files')
+parser.add_argument('--weights', default='/pscratch/sd/j/jing/H1PCT/weights_saved/', help='Folder to store trained weights')
 
 parser.add_argument('--mode', default='standard', help='Which train type to load [hybrid/standard/PCT]')
 parser.add_argument('--config', default='config_4d_general.json', help='Basic config file containing general options')
 parser.add_argument('--img_fmt', default='pdf', help='Format of the output figures')
 parser.add_argument('--plot_reco', action='store_true', default=False,help='Plot reco level comparison between data and MC predictions')
 
-parser.add_argument('--cf', default='f', help='Do central jets or forward')
+parser.add_argument('--cf', default='c', help='Do central jets or forward')
 parser.add_argument('-N',type=float,default=300e6, help='Number of events to evaluate')
 parser.add_argument('--niter', type=int, default=4, help='Omnifold iteration to load')
 parser.add_argument('--upTo', type=int, default=6, help='Highest order of the moment to compute to')
@@ -43,7 +43,7 @@ flags.N = int(flags.N)
 
 config=LoadJson(flags.config)
 
-mc_names = ['Pythia_nominal']#,'Sherpa_Lund']
+mc_names = ['Pythia_TRACK4']#,'Sherpa_Lund']
 # standalone_predictions = ['Herwig','Sherpa']
 standalone_predictions = []    
 data_idx = 0 # sample that after weights represent data
@@ -77,18 +77,31 @@ def compute_moment(values, weights, order):
     return data_moment
 
 
-def computeBinnedMoment(hist, order):
+def computeBinnedMoment(hist, order, pT):
 
     value = []
-    binCenters = [0.1, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.9]
-
-    # to compute the nth moment in i_pt bin
-    # sum over binContent * binCenter**order 
-    for i, binCenter in enumerate(binCenters):
-        if i == 0 or i == 7:
-            value.append( 0.2* hist[i] * binCenter**order )
-        else:
-            value.append( 0.1* hist[i] * binCenter**order )
+    # binCenters = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95]
+    if pT < 6:
+        binCenters = [0.1, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.9]
+        # to compute the nth moment in i_pt bin
+        # sum over binContent * binCenter**order 
+        for i, binCenter in enumerate(binCenters):
+            if i == 0 or i == 7:
+                value.append( 0.2* hist[i] * binCenter**order )  # [0, 0.2] or [0.8, 1]
+            else:
+                value.append( 0.1* hist[i] * binCenter**order )
+    else:  # [800, 1200, 2500]
+        binCenters = [0.1, 0.25, 0.35, 0.45, 0.55, 0.65, 0.85]
+        # to compute the nth moment in i_pt bin
+        # sum over binContent * binCenter**order 
+        for i, binCenter in enumerate(binCenters):
+            if i == 0:
+                value.append( 0.2* hist[i] * binCenter**order )  # [0, 0.2] 
+            elif i == 6: 
+                value.append( 0.3* hist[i] * binCenter**order )  # [0.7, 1.0]
+            else:
+                value.append( 0.1* hist[i] * binCenter**order )
+            # value.append( 0.1* hist[i] * binCenter**order )
 
     return sum(value)
 
@@ -242,6 +255,12 @@ bin_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: col
 cen_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
 py_cen_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
 
+bin_sys_mom_cf = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
+# bin_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
+
+# cen_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
+# py_cen_mom_qg = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict))) 
+
 
 ###
 orders = range(1,flags.upTo+1)
@@ -312,7 +331,7 @@ for var in gen_var_names:
                 py_mom_cf[pT][var]['nominal'][order] = mc_moment
 
                 # binned moments
-                bin_moment = computeBinnedMoment(data_pred, order)
+                bin_moment = computeBinnedMoment(data_pred, order, q2_int)
                 bin_mom_cf[pT][var]['nominal'][order] = bin_moment
 
                 print("moment check: ", data_moment, bin_moment)
@@ -325,6 +344,7 @@ for var in gen_var_names:
             for order in orders:
 
                 data_moment = mom_cf[pT][var]['nominal'][order]
+                bin_moment = bin_mom_cf[pT][var]['nominal'][order]
 
                 # stat_unc.append(0)
                 # if not flags.plot_reco:
@@ -351,14 +371,17 @@ for var in gen_var_names:
                         #Model uncertainty: difference between unfolded values
                         data_sys = mc_info[mc_ref].LoadVar(var)
                         mask_var = np.abs(data_sys)>=0
-                        # sys_moment,sys_std = weighted_avg_and_std(data_sys[mask_var],weights=(sys_variations[unc]*mc_info[mc_ref].nominal_wgts)[mask_var])
-                        sys_moment = compute_moment(data_sys,weights=(sys_variations[unc]*mc_info[mc_ref].nominal_wgts),order=order)
+                        # sys_moment,sys_std = weighted_avg_and_std(data_sys[mask_var],weights=(sys_variations[unc]*mc_info[unc].nominal_wgts)[mask_var])
+                        sys_moment = compute_moment(data_sys,weights=(sys_variations[unc]*mc_info[unc].nominal_wgts),order=order)
                         ratio_sys = 100*np.divide(sys_moment-data_moment, data_moment)
                         # ratio_sys= np.sqrt(np.abs(ratio_sys**2 - stat_unc[-1]**2))
                         print("ratio_sys: ", ratio_sys)
                     else:
                         data_sys = mc_info[unc].LoadVar(var)
                         mask_var = np.abs(data_sys)>=0
+
+                        data_pred_sys,_=np.histogram(data_sys,weights=(sys_variations[unc]*mc_info[unc].nominal_wgts),bins=binning,density=True)
+                        print("sys hist: ", data_sys)
                         # if flags.plot_reco:
                         #     sys_moment = np.average(data_sys,weights=mc_info[unc].nominal_wgts)
                         #     mc_var = mc_info[data_name].LoadVar(var)
@@ -367,17 +390,28 @@ for var in gen_var_names:
                         # else:
                         # sys_moment,sys_std = weighted_avg_and_std(data_sys[mask_var],weights=(sys_variations[unc]*mc_info[unc].nominal_wgts)[mask_var])
                         sys_moment = compute_moment(data_sys,weights=(sys_variations[unc]*mc_info[unc].nominal_wgts),order=order)
-                        print("nominal: ", data_moment, "sys: ", sys_moment)
-                        ratio_sys = 100*np.divide(sys_moment-data_moment, data_moment)
-                        print("ratio_sys: ", ratio_sys)
 
-                    total_sys+= np.abs(ratio_sys**2)# - stat_unc[-1]**2)
+                        bin_sys_moment = computeBinnedMoment(data_pred_sys, order, q2_int)
+                        bin_sys_mom_cf[pT][var]['sys'][order] = bin_moment
+
+                        print("nominal: ", data_moment, "sys: ", sys_moment, "binned sys: ", bin_sys_moment)
+
+                        # ratio_sys = 100*np.divide(sys_moment-data_moment, data_moment)
+                        # print("ratio_sys: ", ratio_sys)
+                        sys_corr = sys_moment/bin_sys_moment
+                        nom_corr = data_moment/bin_moment
+                        binning_unc = sys_corr - nom_corr
+                        frac_binning_unc = np.divide(sys_moment/bin_sys_moment - data_moment/bin_moment, data_moment/bin_moment)
+                        print("raw sys corr: ", sys_corr, "raw nominal corr: ", nom_corr)
+                        print("binning correction uncertainties: ", binning_unc, "frac: ", frac_binning_unc)
+
+                    # total_sys+= np.abs(ratio_sys**2)# - stat_unc[-1]**2)
                     # print(ratio_sys**2,unc)
 
                 #total_sys = np.abs(total_sys - stat_unc[-1]**2)
-                total_sys = total_sys**0.5 
-                print("order: ", order, "total sys: ", total_sys)
-                mom_cf[pT][var]['sys'][order] = total_sys
+                # total_sys = total_sys**0.5 
+                # print("order: ", order, "total sys: ", total_sys)
+                # mom_cf[pT][var]['sys'][order] = total_sys
 
         else:
             sys_unc.append(0)
@@ -406,7 +440,12 @@ for var in gen_var_names:
     k4s = CalcK4sFromMoments( t1s, t2s, t3s, t4s )
     k5s = CalcK5sFromMoments( t1s, t2s, t3s, t4s, t5s )
     k6s = CalcK6sFromMoments( t1s, t2s, t3s, t4s, t5s, t6s )
-    ks = [k1s, k2s, k3s, k4s, k5s, k6s]
+
+    k2k2s = np.power( k2s, 2)
+    k2k3s = np.multiply( k2s, k3s)
+    k2k2k2s = np.power( k2s, 3)
+
+    ks = [k2k2s, k2k3s, k2k2k2s, k4s, k5s, k6s]
 
     # Binned version:
 
@@ -430,10 +469,20 @@ for var in gen_var_names:
     bin_k4s = CalcK4sFromMoments( bin_t1s, bin_t2s, bin_t3s, bin_t4s )
     bin_k5s = CalcK5sFromMoments( bin_t1s, bin_t2s, bin_t3s, bin_t4s, bin_t5s )
     bin_k6s = CalcK6sFromMoments( bin_t1s, bin_t2s, bin_t3s, bin_t4s, bin_t5s, bin_t6s )
-    bin_ks = [bin_k1s, bin_k2s, bin_k3s, bin_k4s, bin_k5s, bin_k6s]
 
-    print("ks: ", ks, "\n")
-    print("binned ks: ", bin_ks, "\n")
+    bin_k2k2s = np.power( bin_k2s, 2)
+    bin_k2k3s = np.multiply( bin_k2s, bin_k3s)
+    bin_k2k2k2s = np.power( bin_k2s, 3)
+
+    bin_ks = [bin_k2k2s, bin_k2k3s, bin_k2k2k2s, bin_k4s, bin_k5s, bin_k6s]
+
+    print("!!!!!k4_k2k2: ", k4s, k2k2s, "\n")
+    print("!!!!!k5_k2k3: ", k5s, k2k3s, "\n")
+    print("!!!!!k6_k2k2k2: ", k6s, k2k2k2s, "\n")
+
+    print("!!!!!k4_k2k2: ", bin_k4s, bin_k2k2s, "\n")
+    print("!!!!!k5_k2k3: ", bin_k5s, bin_k2k3s, "\n")
+    print("!!!!!k6_k2k2k2: ", bin_k6s, bin_k2k2k2s, "\n")
 
 
     if flags.mom:
