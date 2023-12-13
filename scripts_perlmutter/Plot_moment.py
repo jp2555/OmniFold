@@ -43,7 +43,7 @@ flags.N = int(flags.N)
 
 config=LoadJson(flags.config)
 
-mc_names = ['Pythia_TRACK4']#,'Sherpa_Lund']
+mc_names = ['Pythia_nominal']#,'Sherpa_Lund']
 # standalone_predictions = ['Herwig','Sherpa']
 standalone_predictions = []    
 data_idx = 0 # sample that after weights represent data
@@ -79,29 +79,33 @@ def compute_moment(values, weights, order):
 
 def computeBinnedMoment(hist, order, pT):
 
+    # to compute the nth moment in i_pt bin
+    # sum over binContent * binCenter**order 
     value = []
-    # binCenters = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95]
-    if pT < 6:
+
+    if pT < 9:
         binCenters = [0.1, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.9]
-        # to compute the nth moment in i_pt bin
-        # sum over binContent * binCenter**order 
+
         for i, binCenter in enumerate(binCenters):
             if i == 0 or i == 7:
                 value.append( 0.2* hist[i] * binCenter**order )  # [0, 0.2] or [0.8, 1]
+                # if i == 7: print("bin [0.8, 1]: ", 0.2* hist[i] * binCenter**order)
             else:
                 value.append( 0.1* hist[i] * binCenter**order )
+
     else:  # [800, 1200, 2500]
         binCenters = [0.1, 0.25, 0.35, 0.45, 0.55, 0.65, 0.85]
-        # to compute the nth moment in i_pt bin
-        # sum over binContent * binCenter**order 
+
         for i, binCenter in enumerate(binCenters):
             if i == 0:
                 value.append( 0.2* hist[i] * binCenter**order )  # [0, 0.2] 
             elif i == 6: 
                 value.append( 0.3* hist[i] * binCenter**order )  # [0.7, 1.0]
+                # print("bin [0.7, 1]: ", 0.3* hist[i] * binCenter**order)
             else:
                 value.append( 0.1* hist[i] * binCenter**order )
-            # value.append( 0.1* hist[i] * binCenter**order )
+
+    print("!!!!! values in each bin: ", value)
 
     return sum(value)
 
